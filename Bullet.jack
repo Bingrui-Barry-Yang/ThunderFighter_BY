@@ -1,0 +1,93 @@
+class Bullet {
+    field int x;
+    field int y;
+    field int width;
+    field int height;
+    field int dy;
+    field int owner;
+    field boolean active;
+
+    constructor Bullet new(int startX, int startY) {
+        // sets the start position and the bullet size.
+        let x = startX;
+        let y = startY;
+        let width = 2;
+        let height = 4;
+        let dy = -6;
+        let owner = 0;
+        let active = false;
+
+        return this;
+    }
+
+    method void reset(int startX, int startY, int speedY, int bulletOwner) {
+        // reuses one old bullet object with a new position and direction.
+        let x = startX;
+        let y = startY;
+        let dy = speedY;
+        let owner = bulletOwner;
+        let active = true;
+        return;
+    }
+
+    method void update() {
+        // moves the bullet in its own direction each frame.
+        let y = y + dy;
+
+        // turns the bullet off before drawing would go outside the screen.
+        if (y < 0) {
+            let active = false;
+        }
+        if ((y + height) > 255) {
+            let active = false;
+        }
+        return;
+    }
+
+    method void deactivate() {
+        // turns the bullet off after a hit.
+        let active = false;
+        return;
+    }
+
+    method boolean isActive() {
+        return active;
+    }
+
+    method void draw() {
+        // skips drawing if the bullet is already outside the safe screen area.
+        if (y < 0) {
+            return;
+        }
+        if ((y + height) > 255) {
+            return;
+        }
+
+        //  draws the bullet as a small filled rectangle.
+        do Screen.setColor(true);
+        do Screen.drawRectangle(x, y, x + width, y + height);
+        return;
+    }
+
+    method int getX() {
+        return x;
+    }
+
+    method int getY() {
+        return y;
+    }
+
+    method int getWidth() {
+        return width;
+    }
+
+    method int getHeight() {
+        return height;
+    }
+
+    method int getOwner() {
+        // tells who the bullet belongs to, player or enemy.
+        return owner;
+    }
+
+}

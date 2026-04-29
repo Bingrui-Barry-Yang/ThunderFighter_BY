@@ -1,0 +1,123 @@
+class Enemy {
+    field int x;
+    field int y;
+    field int width;
+    field int height;
+    field int targetY;
+    field int shootTimer;
+    field boolean active;
+
+    constructor Enemy new(int startX, int startY) {
+        // sets the start position(top left) and the enemy size.
+        let x = startX;
+        let y = startY;
+        let width = 21; // calculated from the new draw image
+        let height = 12; // calculated from the new draw image
+        let targetY = 80; // the height that enemy stop moving downward
+        let shootTimer = 20; // time between shooting bullets
+        let active = false; // alive or dead
+
+        return this;
+    }
+
+    method void reset(int startX, int startY) {
+        // reuses old enemy object with a new position to save memory.
+        let x = startX;
+        let y = startY;
+        let targetY = 80;
+        let shootTimer = 20;
+        let active = true;
+        return;
+    }
+
+    method void update() {
+        // let the enemy move down until it reaches the shooting height.
+        if (y < targetY) {
+            let y = y + 1;
+        }
+
+        // counts down to the next shot
+        if ((y = targetY) & (shootTimer > 0)) {
+            let shootTimer = shootTimer - 1;
+        }
+        return;
+    }
+
+    method void deactivate() {
+        // enemy is dead after being hit.
+        let active = false;
+        return;
+    }
+
+    method boolean isActive() {
+        return active;
+    }
+
+    method boolean canShoot() {
+        // whether the enemy is ready to fire.
+        if ((y = targetY) & (shootTimer = 0)) {
+            return true;
+        }
+        return false;
+    }
+
+    method void resetShootTimer() {
+        let shootTimer = 25;
+        return;
+    }
+
+    method void draw() {
+        var int location;
+        var int memAddress;
+
+        // sets the enemy position into a screen memory location.
+        let location = Math.multiply(y, 32) + Math.divide(x, 16);
+        let memAddress = 16384 + location;
+
+        // draws the enemy bitmap row by row in screen memory.
+        do Memory.poke(memAddress, 3584);
+        do Memory.poke(memAddress + 32, 32704);
+        do Memory.poke(memAddress + 64, -1);
+        do Memory.poke(memAddress + 96, -16);
+        do Memory.poke(memAddress + 128, 25792);
+        do Memory.poke(memAddress + 160, 25792);
+        do Memory.poke(memAddress + 192, 17472);
+        do Memory.poke(memAddress + 224, 17472);
+        do Memory.poke(memAddress + 256, 17472);
+        do Memory.poke(memAddress + 288, 1024);
+        do Memory.poke(memAddress + 320, 1024);
+        do Memory.poke(memAddress + 352, 1024);
+
+        // draws the extra right-side bits in the rows that use the next word.
+        do Memory.poke(memAddress + 65, 31);
+        do Memory.poke(memAddress + 97, 1);
+        return;
+    }
+
+    method int getX() {
+        return x;
+    }
+
+    method int getY() {
+        return y;
+    }
+
+    method int getWidth() {
+        return width;
+    }
+
+    method int getHeight() {
+        return height;
+    }
+
+    method int getBulletX() {
+        // gives the bullet start x at the center of the new enemy image
+        return x + 9;
+    }
+
+    method int getBulletY() {
+        // gives the bullet start y just under the new enemy image.
+        return y + height;
+    }
+
+}
