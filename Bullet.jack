@@ -1,11 +1,13 @@
 class Bullet {
-    field int x;
-    field int y;
-    field int width;
-    field int height;
-    field int dy;
-    field int owner;
-    field boolean active;
+    field int x; // x position
+    field int y; // y position
+    field int width; // bullet width
+    field int height; // bullet height
+    field int dy; // vertical speed
+    field int owner; // bullet owner
+    field int bonusGap; // speed bonus gap
+    field int bonusTimer; // bonus timer
+    field boolean active; // active flag
 
     constructor Bullet new(int startX, int startY) {
         // sets the start position and the bullet size.
@@ -15,6 +17,8 @@ class Bullet {
         let height = 4;
         let dy = -6;
         let owner = 0;
+        let bonusGap = 0;
+        let bonusTimer = 0;
         let active = false;
 
         return this;
@@ -26,6 +30,20 @@ class Bullet {
         let y = startY;
         let dy = speedY;
         let owner = bulletOwner;
+        let bonusGap = 0;
+        let bonusTimer = 0;
+        let active = true;
+        return;
+    }
+
+    method void resetWithBonus(int startX, int startY, int speedY, int bulletOwner, int gap) {
+        // reset fast bullet
+        let x = startX;
+        let y = startY;
+        let dy = speedY;
+        let owner = bulletOwner;
+        let bonusGap = gap;
+        let bonusTimer = gap;
         let active = true;
         return;
     }
@@ -33,6 +51,13 @@ class Bullet {
     method void update() {
         // moves the bullet in its own direction each frame.
         let y = y + dy;
+        if (bonusGap > 0) {
+            let bonusTimer = bonusTimer - 1;
+            if (bonusTimer < 1) {
+                let y = y + dy;
+                let bonusTimer = bonusGap;
+            }
+        }
 
         // turns the bullet off before drawing would go outside the screen.
         if (y < 0) {

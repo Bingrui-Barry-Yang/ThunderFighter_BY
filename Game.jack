@@ -2,14 +2,20 @@ class Game {
     static int MAX_ENEMIES;
     static int MAX_BULLETS;
 
-    field Player player;
-    field Array enemies;
-    field Array bullets;
-    field int score;
+    field Player player; // player object
+    field Array enemies; // enemy pool
+    field Array bullets; // bullet pool
+    field int score; // current score
     field int spawnTimer; // period between enemy occur
-    field int shootTimer;
-    field boolean gameOver;
-    field int spawnSide; // position enemy occur
+    field int shootTimer; // player shoot timer
+    field boolean gameOver; // game over flag
+    field boolean paused; // pause flag
+    field int randomSeed; // used to choose a random enemy lane
+    field int wavesUntilBoss; // boss countdown
+    field int waveNumber; // wave count
+    field int bossesKilled; // boss kills
+    field int highScore; // best score
+    field boolean newRecord; // record flag
 
     constructor Game new() {
         return this;
@@ -35,7 +41,13 @@ class Game {
         let spawnTimer = 30;
         let shootTimer = 0;
         let gameOver = false;
-        let spawnSide = 0;
+        let paused = false;
+        let randomSeed = 17;
+        let wavesUntilBoss = 3;
+        let waveNumber = 0;
+        let bossesKilled = 0;
+        let highScore = 0;
+        let newRecord = false;
 
         // makes the fixed enemy pool, enemy inside can be reused, not activated yet
         let i = 0;
@@ -57,6 +69,11 @@ class Game {
     }
 
     method void run() {
+        // main game flow
+        do showStartScreen();
+        do waitForStart();
+        do resetGameState();
+
         // keeps the program alive so the player can restart with the restart key without restart the vm.
         while (true) {
             // one full game until the player dies.
@@ -68,6 +85,7 @@ class Game {
             }
 
             // shows "gameover" and waits for restart.
+            do updateHighScore();
             do showGameOverScreen();
             do waitForRestart();
             do resetGameState();
@@ -76,6 +94,11 @@ class Game {
     }
 
     method void update() {
+        // update one frame
+        if (handleControlKeys()) {
+            return;
+        }
+
         // updates the player.
         do updatePlayer();
 
@@ -113,6 +136,7 @@ class Game {
     }
 
     method void render() {
+        // draw one frame
         var int i;
         var Bullet bullet;
         var Enemy enemy;
@@ -160,10 +184,62 @@ class Game {
         do Output.printChar(58);
         do Output.printChar(32);
         do Output.printInt(player.getHp());
+        if (bossActive()) {
+            do Output.moveCursor(2, 0);
+            do Output.printChar(66);
+            do Output.printChar(111);
+            do Output.printChar(115);
+            do Output.printChar(115);
+            do Output.printChar(32);
+            do Output.printChar(72);
+            do Output.printChar(80);
+            do Output.printChar(58);
+            do Output.printChar(32);
+            do Output.printInt(getBossHp());
+        }
+        if (paused) {
+            do Output.moveCursor(6, 0);
+            do Output.printChar(80);
+            do Output.printChar(97);
+            do Output.printChar(117);
+            do Output.printChar(115);
+            do Output.printChar(101);
+            do Output.printChar(100);
+        }
+        do Output.moveCursor(3, 0);
+        do Output.printChar(87);
+        do Output.printChar(97);
+        do Output.printChar(118);
+        do Output.printChar(101);
+        do Output.printChar(58);
+        do Output.printChar(32);
+        do Output.printInt(waveNumber);
+        do Output.moveCursor(4, 0);
+        do Output.printChar(72);
+        do Output.printChar(105);
+        do Output.printChar(103);
+        do Output.printChar(104);
+        do Output.printChar(58);
+        do Output.printChar(32);
+        do Output.printInt(highScore);
+        if ((newRecord) | (score > highScore)) {
+            do Output.moveCursor(5, 0);
+            do Output.printChar(78);
+            do Output.printChar(101);
+            do Output.printChar(119);
+            do Output.printChar(32);
+            do Output.printChar(82);
+            do Output.printChar(101);
+            do Output.printChar(99);
+            do Output.printChar(111);
+            do Output.printChar(114);
+            do Output.printChar(100);
+        }
         return;
     }
 
     method void updatePlayer() {
+        // handle movement
         var int key;
 
         // reads keyboard value
@@ -186,6 +262,7 @@ class Game {
     }
 
     method void updateBullets() {
+        // move bullets
         var int i;
         var Bullet bullet;
 
@@ -202,6 +279,7 @@ class Game {
     }
 
     method void updateEnemies() {
+        // move enemies
         var int i;
         var Enemy enemy;
 
@@ -214,8 +292,13 @@ class Game {
 
                 // fires one enemy bullet after the enemy reaches its position
                 if (enemy.canShoot()) {
-                    do fireEnemyBullet(enemy);
-                    do enemy.resetShootTimer();
+                    if (enemy.isBoss()) {
+                        do fireBossBullets(enemy);
+                    }
+                    else {
+                        do fireEnemyBullet(enemy);
+                    }
+                    do enemy.resetShootTimer(getEnemyShootInterval());
                 }
             }
             let i = i + 1;
@@ -224,54 +307,82 @@ class Game {
     }
 
     method void spawnEnemy() {
+        // choose wave type
+        if (anyEnemyActive()) {
+            return;
+        }
+
+        if (wavesUntilBoss = 0) {
+            do spawnBoss();
+        }
+        else {
+            do spawnWave();
+        }
+        return;
+    }
+
+    method void spawnWave() {
+        // spawn four enemies
         var int i;
         var int cnt;
-        var int enemyX; // position enemy occur, fixed for now, shown in the following while loop
+        var int lane;
+        var int enemyX;
         var Enemy enemy;
 
-        // This tries different lanes until it finds one with no active enemy.
-        let cnt = 0;
-        while (cnt < 6) {
-            let enemyX = 16;
-            if (spawnSide = 1) {
-                let enemyX = 96;
-            }
-            if (spawnSide = 2) {
-                let enemyX = 176;
-            }
-            if (spawnSide = 3) {
-                let enemyX = 256;
-            }
-            if (spawnSide = 4) {
-                let enemyX = 336;
-            }
-            if (spawnSide = 5) {
-                let enemyX = 416;
-            }
+        // Spawns one wave of four small enemies in random, non-overlapping lanes.
+        let i = 0;
+        while (i < MAX_ENEMIES) {
+            let enemy = enemies[i];
+            let cnt = 0;
+            while (cnt < getLaneCount()) {
+                let lane = nextRandomLane();
+                let enemyX = getLaneX(lane);
 
-            if (~(doLaneOccupied(enemyX))) {
-                let i = 0;
-                while (i < MAX_ENEMIES) {
-                    let enemy = enemies[i];
-                    if (~(enemy.isActive())) {
+                if (~(doLaneOccupied(enemyX))) {
+                    do enemy.reset(enemyX, 0);
+                    let cnt = getLaneCount();
+                }
+                let cnt = cnt + 1;
+            }
+            if (~(enemy.isActive())) {
+                let cnt = 0;
+                while (cnt < getLaneCount()) {
+                    let enemyX = getLaneX(cnt);
+                    if (~(doLaneOccupied(enemyX))) {
                         do enemy.reset(enemyX, 0);
-                        return;
+                        let cnt = getLaneCount();
                     }
-                    let i = i + 1;
+                    let cnt = cnt + 1;
                 }
             }
+            let i = i + 1;
+        }
+        let wavesUntilBoss = wavesUntilBoss - 1;
+        let waveNumber = waveNumber + 1;
+        return;
+    }
 
-            // moves to the next lane so enemies do not overlap.
-            let spawnSide = spawnSide + 1;
-            if (spawnSide > 5) {
-                let spawnSide = 0;
+    method void spawnBoss() {
+        // spawn boss
+        var int i;
+        var Enemy enemy;
+
+        let i = 0;
+        while (i < MAX_ENEMIES) {
+            let enemy = enemies[i];
+            if (~(enemy.isActive())) {
+                do enemy.resetBoss(208, 0, getNextBossHp(), bossesKilled);
+                let wavesUntilBoss = 3;
+                let waveNumber = waveNumber + 1;
+                return;
             }
-            let cnt = cnt + 1;
+            let i = i + 1;
         }
         return;
     }
 
     method void firePlayerBullet() {
+        // player fires
         var int i;
         var Bullet bullet;
 
@@ -289,6 +400,24 @@ class Game {
     }
 
     method void fireEnemyBullet(Enemy shooter) {
+        // normal enemy fires
+        do fireEnemyBulletAt(shooter.getBulletX(), shooter.getBulletY(), 1, getEnemyBulletBonusGap());
+        return;
+    }
+
+    method void fireBossBullets(Enemy shooter) {
+        // boss triple shot
+        var int startY;
+
+        let startY = shooter.getBulletY();
+        do fireEnemyBulletAt(shooter.getX() + 8, startY, 1, getEnemyBulletBonusGap());
+        do fireEnemyBulletAt(shooter.getX() + 47, startY, 1, getEnemyBulletBonusGap());
+        do fireEnemyBulletAt(shooter.getX() + 86, startY, 1, getEnemyBulletBonusGap());
+        return;
+    }
+
+    method void fireEnemyBulletAt(int startX, int startY, int speedY, int bonusGap) {
+        // reuse enemy bullet
         var int i;
         var Bullet bullet;
 
@@ -297,7 +426,12 @@ class Game {
         while (i < MAX_BULLETS) {
             let bullet = bullets[i];
             if (~(bullet.isActive())) {
-                do bullet.reset(shooter.getBulletX(), shooter.getBulletY(), 4, 1);
+                if (bonusGap > 0) {
+                    do bullet.resetWithBonus(startX, startY, speedY, 1, bonusGap);
+                }
+                else {
+                    do bullet.reset(startX, startY, speedY, 1);
+                }
                 return;
             }
             let i = i + 1;
@@ -306,6 +440,7 @@ class Game {
     }
 
     method void checkCollisions() {
+        // check all hits
         var int i;
         var int j;
         var Bullet bullet;
@@ -322,8 +457,10 @@ class Game {
                     if (enemy.isActive()) {
                         if (Collision.intersects(bullet.getX(), bullet.getY(), bullet.getWidth(), bullet.getHeight(), enemy.getX(), enemy.getY(), enemy.getWidth(), enemy.getHeight())) {
                             do bullet.deactivate();
-                            do enemy.deactivate();
-                            let score = score + 10;
+                            if (enemy.takeHit()) {
+                                do countEnemyKill(enemy);
+                            }
+                            let j = MAX_ENEMIES;
                         }
                     }
                     let j = j + 1;
@@ -351,7 +488,9 @@ class Game {
             let enemy = enemies[i];
             if (enemy.isActive()) {
                 if (Collision.intersects(enemy.getX(), enemy.getY(), enemy.getWidth(), enemy.getHeight(), player.getX(), player.getY(), player.getWidth(), player.getHeight())) {
-                    do enemy.deactivate();
+                    if (~(enemy.isBoss())) {
+                        do enemy.deactivate();
+                    }
                     do player.takeDamage();
                 }
             }
@@ -366,6 +505,7 @@ class Game {
     }
 
     method void resetGameState() {
+        // reset current run
         var int i;
         var Enemy enemy;
         var Bullet bullet;
@@ -376,7 +516,12 @@ class Game {
         let spawnTimer = 30;
         let shootTimer = 0;
         let gameOver = false;
-        let spawnSide = 0;
+        let paused = false;
+        let randomSeed = 17;
+        let wavesUntilBoss = 3;
+        let waveNumber = 0;
+        let bossesKilled = 0;
+        let newRecord = false;
 
         // turns off all old enemies so they can be reused.
         let i = 0;
@@ -397,19 +542,28 @@ class Game {
     }
 
     method void showGameOverScreen() {
+        // end screen
         //  draws the game-over text, score, and restart button once.
         do Screen.clearScreen();
-        do Output.moveCursor(10, 18);
+        do Output.moveCursor(7, 27);
         do Output.printString("Game Over");
-        do Output.moveCursor(10, 30);
-        do Output.printString("[R] Restart");
-        do Output.moveCursor(12, 20);
+        do Output.moveCursor(9, 27);
         do Output.printString("Score: ");
         do Output.printInt(score);
+        do Output.moveCursor(11, 24);
+        do Output.printString("Highest Score: ");
+        do Output.printInt(highScore);
+        if (newRecord) {
+            do Output.moveCursor(13, 27);
+            do Output.printString("New Record");
+        }
+        do Output.moveCursor(15, 22);
+        do Output.printString("Press [R] to restart");
         return;
     }
 
     method void waitForRestart() {
+        // wait for R
         var int key;
 
         // waits until the player presses r to restart.
@@ -421,7 +575,73 @@ class Game {
         return;
     }
 
+    method void showStartScreen() {
+        // start screen
+        do Screen.clearScreen();
+        do Output.moveCursor(8, 24);
+        do Output.printString("Thunder Fighter");
+        do Output.moveCursor(10, 11);
+        do Output.printString("Shoot automatically, use Arrows to dodge");
+        do Output.moveCursor(12, 24);
+        do Output.printString("Press [S] to start");
+        do Output.moveCursor(14, 21);
+        do Output.printString("Press [Space] to pause");
+        return;
+    }
+
+    method void waitForStart() {
+        // wait for S
+        var int key;
+
+        let key = 0;
+        while (~((key = 83) | (key = 115))) {
+            let key = Keyboard.keyPressed();
+            do Sys.wait(10);
+        }
+        do waitForKeyRelease();
+        return;
+    }
+
+    method boolean handleControlKeys() {
+        // pause or restart
+        var int key;
+
+        let key = Keyboard.keyPressed();
+
+        if ((key = 82) | (key = 114)) {
+            do updateHighScore();
+            do resetGameState();
+            do waitForKeyRelease();
+            return true;
+        }
+
+        if (key = 32) {
+            if (paused) {
+                let paused = false;
+            }
+            else {
+                let paused = true;
+            }
+            do waitForKeyRelease();
+            return true;
+        }
+
+        if (paused) {
+            return true;
+        }
+        return false;
+    }
+
+    method void waitForKeyRelease() {
+        // debounce key
+        while (~(Keyboard.keyPressed() = 0)) {
+            do Sys.wait(10);
+        }
+        return;
+    }
+
     method boolean doLaneOccupied(int laneX) {
+        // lane collision
         var int i;
         var Enemy enemy;
 
@@ -437,6 +657,141 @@ class Game {
             let i = i + 1;
         }
         return false;
+    }
+
+    method void countEnemyKill(Enemy enemy) {
+        // add rewards
+        if (enemy.isBoss()) {
+            let score = score + 100;
+            let bossesKilled = bossesKilled + 1;
+            do player.heal();
+        }
+        else {
+            let score = score + 10;
+        }
+        return;
+    }
+
+    method void updateHighScore() {
+        // save record
+        if (score > highScore) {
+            let highScore = score;
+            let newRecord = true;
+        }
+        return;
+    }
+
+    method boolean anyEnemyActive() {
+        // any enemy alive
+        var int i;
+        var Enemy enemy;
+
+        let i = 0;
+        while (i < MAX_ENEMIES) {
+            let enemy = enemies[i];
+            if (enemy.isActive()) {
+                return true;
+            }
+            let i = i + 1;
+        }
+        return false;
+    }
+
+    method boolean bossActive() {
+        // boss alive
+        var int i;
+        var Enemy enemy;
+
+        let i = 0;
+        while (i < MAX_ENEMIES) {
+            let enemy = enemies[i];
+            if (enemy.isActive()) {
+                if (enemy.isBoss()) {
+                    return true;
+                }
+            }
+            let i = i + 1;
+        }
+        return false;
+    }
+
+    method int getBossHp() {
+        // current boss hp
+        var int i;
+        var Enemy enemy;
+
+        let i = 0;
+        while (i < MAX_ENEMIES) {
+            let enemy = enemies[i];
+            if (enemy.isActive()) {
+                if (enemy.isBoss()) {
+                    return enemy.getHp();
+                }
+            }
+            let i = i + 1;
+        }
+        return 0;
+    }
+
+    method int getNextBossHp() {
+        // boss hp scaling
+        return 20 + Math.multiply(bossesKilled, 5);
+    }
+
+    method int getEnemyShootInterval() {
+        // shot interval scaling
+        var int interval;
+
+        let interval = 60 - Math.divide(Math.multiply(60, Math.multiply(bossesKilled, 5)), 100);
+        if (interval < 15) {
+            return 15;
+        }
+        return interval;
+    }
+
+    method int getEnemyBulletBonusGap() {
+        // bullet speed scaling
+        var int bonus;
+
+        let bonus = 20 + Math.multiply(bossesKilled, 5);
+        if (bonus < 1) {
+            return 0;
+        }
+        return Math.divide(100, bonus);
+    }
+
+    method int getLaneCount() {
+        // spawn column count
+        var int count;
+
+        let count = 6 + Math.divide(bossesKilled, 2);
+        if (count > 16) {
+            return 16;
+        }
+        return count;
+    }
+
+    method int nextRandomLane() {
+        // random lane
+        // Keeps the seed small and mixes in player movement so the lane order changes during play.
+        let randomSeed = randomSeed + player.getX() + player.getY() + 17;
+        while (randomSeed > 159) {
+            let randomSeed = randomSeed - 160;
+        }
+        return Math.divide(Math.multiply(randomSeed, getLaneCount()), 160);
+    }
+
+    method int getLaneX(int lane) {
+        // lane to x
+        var int laneCount;
+        var int wordColumn;
+
+        let laneCount = getLaneCount();
+        if (laneCount < 2) {
+            return 16;
+        }
+        let wordColumn = Math.divide(Math.multiply(lane, 29), laneCount - 1);
+        return 16 + Math.multiply(wordColumn, 16);
     }
 
     method boolean isGameOver() {

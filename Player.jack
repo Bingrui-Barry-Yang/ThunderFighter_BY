@@ -1,11 +1,12 @@
 class Player {
-    field int x;
-    field int y;
-    field int hp;
-    field int width;
-    field int height;
+    field int x; // x position
+    field int y; // y position
+    field int hp; // player hp
+    field int width; // hit width
+    field int height; // hit height
 
     constructor Player new(int startX, int startY) {
+        // create player
         let x = startX;
         let y = startY;
         let hp = 3;
@@ -63,12 +64,19 @@ class Player {
         return;
     }
 
+    method void heal() {
+        // hp plus
+        let hp = hp + 1;
+        return;
+    }
+
     method boolean isDead() {
         // reports if the player has no HP left.
         return (hp = 0);
     }
 
     method void draw() {
+        // draw player
         var int location;
         var int memAddress;
 
