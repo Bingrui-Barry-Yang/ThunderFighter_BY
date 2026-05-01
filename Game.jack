@@ -8,6 +8,11 @@ class Game {
     field int score; // current score
     field int spawnTimer; // period between enemy occur
     field int shootTimer; // player shoot timer
+    field int playerMoveTimer; // player move timer
+    field int bulletMoveTimer; // bullet move timer
+    field int enemyMoveTimer; // enemy move timer
+    field int playerDx; // horizontal input
+    field int playerDy; // vertical input
     field boolean gameOver; // game over flag
     field boolean paused; // pause flag
     field int randomSeed; // used to choose a random enemy lane
@@ -28,7 +33,7 @@ class Game {
 
         // sets the fixed pool sizes for enemies and bullets (for now).
         let MAX_ENEMIES = 4;
-        let MAX_BULLETS = 16;
+        let MAX_BULLETS = 20;
 
         // creates the player and the two object pools.
         // The player starts on a 16-pixel boundary for bitmap drawing.
@@ -40,6 +45,11 @@ class Game {
         let score = 0;
         let spawnTimer = 30;
         let shootTimer = 0;
+        let playerMoveTimer = 0;
+        let bulletMoveTimer = 0;
+        let enemyMoveTimer = 0;
+        let playerDx = 0;
+        let playerDy = 0;
         let gameOver = false;
         let paused = false;
         let randomSeed = 17;
@@ -99,8 +109,9 @@ class Game {
             return;
         }
 
-        // updates the player.
-        do updatePlayer();
+        // updates systems on separate timers.
+        do readPlayerInput();
+        do updatePlayerByTimer();
 
         // controls the automatic shooting timer.
         if (shootTimer > 0) {
@@ -120,9 +131,8 @@ class Game {
             let spawnTimer = 36;
         }
 
-        // updates every moving object in the game.
-        do updateBullets();
-        do updateEnemies();
+        do updateBulletsByTimer();
+        do updateEnemiesByTimer();
 
         // checks hits, then removes dead objects.
         do checkCollisions();
@@ -238,25 +248,55 @@ class Game {
         return;
     }
 
-    method void updatePlayer() {
-        // handle movement
+    method void readPlayerInput() {
+        // read move intent
         var int key;
 
         // reads keyboard value
         let key = Keyboard.keyPressed();
+        let playerDx = 0;
+        let playerDy = 0;
 
-        // moves the player
         if (key = 131) {
-            do player.moveUp();
+            let playerDy = -1;
         }
         if (key = 133) {
-            do player.moveDown();
+            let playerDy = 1;
         }
         if (key = 130) {
-            do player.moveLeft();
+            let playerDx = -1;
         }
         if (key = 132) {
+            let playerDx = 1;
+        }
+        return;
+    }
+
+    method void updatePlayer() {
+        // apply move intent
+        if (playerDy = -1) {
+            do player.moveUp();
+        }
+        if (playerDy = 1) {
+            do player.moveDown();
+        }
+        if (playerDx = -1) {
+            do player.moveLeft();
+        }
+        if (playerDx = 1) {
             do player.moveRight();
+        }
+        return;
+    }
+
+    method void updatePlayerByTimer() {
+        // timed player move
+        if (playerMoveTimer > 0) {
+            let playerMoveTimer = playerMoveTimer - 1;
+        }
+        if (playerMoveTimer = 0) {
+            do updatePlayer();
+            let playerMoveTimer = 1;
         }
         return;
     }
@@ -274,6 +314,18 @@ class Game {
                 do bullet.update();
             }
             let i = i + 1;
+        }
+        return;
+    }
+
+    method void updateBulletsByTimer() {
+        // timed bullet move
+        if (bulletMoveTimer > 0) {
+            let bulletMoveTimer = bulletMoveTimer - 1;
+        }
+        if (bulletMoveTimer = 0) {
+            do updateBullets();
+            let bulletMoveTimer = 1;
         }
         return;
     }
@@ -302,6 +354,18 @@ class Game {
                 }
             }
             let i = i + 1;
+        }
+        return;
+    }
+
+    method void updateEnemiesByTimer() {
+        // timed enemy move
+        if (enemyMoveTimer > 0) {
+            let enemyMoveTimer = enemyMoveTimer - 1;
+        }
+        if (enemyMoveTimer = 0) {
+            do updateEnemies();
+            let enemyMoveTimer = 1;
         }
         return;
     }
@@ -515,6 +579,11 @@ class Game {
         let score = 0;
         let spawnTimer = 30;
         let shootTimer = 0;
+        let playerMoveTimer = 0;
+        let bulletMoveTimer = 0;
+        let enemyMoveTimer = 0;
+        let playerDx = 0;
+        let playerDy = 0;
         let gameOver = false;
         let paused = false;
         let randomSeed = 17;
