@@ -4,21 +4,7 @@ Thunder Fighter is a fighter jet shooting game written in Jack.
 The player controls a fighter with the arrow keys, shoots automatically, dodges enemy bullets, clears enemy waves, and fights boss enemies. The game ends when the player loses all HP.
 
 # Compile and Run
-Compile the project folder with a Jack compiler, then load the generated VM files in the Nand2Tetris VM Emulator.
-
-Example:
-
-```sh
-JackCompiler ThunderFighter_BY
-```
-
-If using the course compiler script:
-
-```sh
-python3 JackCompiler_BY.py ThunderFighter_BY
-```
-
-After compiling, open the compiled project folder in the VM Emulator and run `Main.main`.
+Compile the project folder with a Jack compiler, then load the generated VM files in the Nand2Tetris VM Emulator. After compiling, open the compiled project folder in the VM Emulator and run.
 
 # Controls
 1. Press `S` to start.
@@ -27,28 +13,35 @@ After compiling, open the compiled project folder in the VM Emulator and run `Ma
 4. Press `R` to restart.
 
 # Structure
-`Main.jack` creates the game object and starts the game loop.
+`Main.jack` is the entry point. It creates one `Game` object, calls `init()`, then calls `run()`.
 
-`Game.jack` controls the main game state, including waves, spawning, score, pause/restart, high score, collision checks, and rendering.
+`Game.jack` is the controller for the whole game. It stores the score, wave number, boss count, pause state, high score, timers, random seed, player object, enemy pool, and bullet pool. Important methods include `run()` for the main loop, `update()` for one logic step, `render()` for drawing one frame, `spawnWave()` and `spawnBoss()` for enemy creation, `firePlayerBullet()` and `fireEnemyBullet()` for shooting, and `checkCollisions()` for hit detection.
 
-`Player.jack` stores the player position, HP, movement, and fighter drawing.
+`Player.jack` stores the player's x/y position, HP, hit box size, movement methods, and drawing method. `moveLeft()`, `moveRight()`, `moveUp()`, and `moveDown()` keep the player inside the screen. `takeDamage()` lowers HP, `heal()` adds HP after a boss kill, and `draw()` draws the player jet.
 
-`Enemy.jack` stores both normal enemy and boss state, including HP, movement, shooting, and drawing.
+`Enemy.jack` stores both normal enemy and boss state. A normal enemy has 1 HP, moves down to a fixed height, then shoots. A boss uses the same class but sets the `boss` flag, has larger size, larger HP, random movement, and different shooting. Important methods include `reset()` for normal enemies, `resetBoss()` for bosses, `update()` for movement and timers, `canShoot()` for shooting decisions, `takeHit()` for damage, and `draw()`/`drawBoss()` for drawing.
 
-`Bullet.jack` stores bullet position, direction, owner, speed behavior, and drawing.
+`Bullet.jack` stores bullet position, size, direction, owner, speed bonus timing, and optional horizontal drift. Player bullets and enemy bullets use the same class. `reset()` and related reset methods reuse old bullet objects instead of making new ones, `update()` moves bullets and deactivates them outside the screen, and `draw()` draws a small rectangle.
 
-`Collision.jack` checks whether two objects touch.
+`Collision.jack` has one job: it checks whether two rectangular hit boxes overlap.
 
 # Class Relationships
 `Main` only creates and starts `Game`.
 
-`Game` owns the `Player`, the enemy pool, and the bullet pool. It is the only class that decides when to spawn waves, when to fire bullets, when to update score, and when the game is over.
+`Game` owns the `Player`, the enemy pool, and the bullet pool. It is the only class that decides when to spawn waves, when to fire bullets, when to update score, and when the game is over. The other classes mostly store and update their own objects, while `Game` coordinates them.
 
-`Enemy` represents both normal enemies and bosses. The `boss` flag changes HP, size, drawing, movement, and shooting behavior.
+The enemy and bullet arrays are object pools. At the start, `Game` creates a fixed number of `Enemy` and `Bullet` objects. During play, inactive objects are reset and reused, which keeps memory use stable.
 
-`Bullet` is shared by both the player and enemies. The `owner` value separates player bullets from enemy bullets during collision checks.
+`Enemy` represents both normal enemies and bosses. The `boss` flag changes HP, size, drawing, movement, and shooting behavior. This avoids needing a separate boss class.
 
-`Collision` is stateless and is called by `Game` whenever two rectangular hit boxes need to be compared.
+`Bullet` is shared by both the player and enemies. The `owner` value separates player bullets from enemy bullets during collision checks: player bullets can damage enemies, and enemy bullets can damage the player.
+
+`Collision` is stateless and is called by `Game` whenever two rectangular hit boxes need to be compared. The result tells `Game` whether to deactivate a bullet, damage an enemy, damage the player, or add score.
+
+# Drawing and Randomness
+The player, normal enemies, and bosses use direct screen memory drawing with `Memory.poke`. This is fast and gives control over bitmap shapes, but it also means their x positions should stay screen-safe and mostly aligned to 16-pixel screen words. Bullets use `Screen.drawRectangle`, because their shape is simple and they can move with small vertical and horizontal changes.
+
+Enemy lanes use a simple pseudo-random seed, not true randomness. The seed starts at 17, mixes in the player's current x/y position plus a small constant, wraps back under 160, then maps that value into the current number of safe spawn columns. If a chosen lane is already occupied, the game tries another lane before spawning the enemy.
 
 # Program Flow
 To avoid memory problems, the game reuses enemy and bullet objects instead of creating new ones forever.
@@ -67,9 +60,6 @@ Normal enemies appear in waves. Each wave contains exactly four enemy jets, and 
 The wave counter increases for both normal waves and boss waves. After every four normal enemy waves, the next wave is a boss wave instead of another normal wave.
 
 Bosses are larger enemies with their own bitmap design, HP, random movement, and three-shot bullet firing from left, center, and right. The first boss has 50 HP, and each later boss has 20 more HP than the previous boss. Boss movement also changes by boss number so later boss paths are not identical.
-
-# Pseudo-Random Spawning
-Enemy lanes use a simple pseudo-random seed, not true randomness. The seed starts at 17, mixes in the player's current x/y position plus a small constant, wraps back under 160, then maps that value into the current number of safe spawn columns. If a chosen lane is already occupied, the game tries another lane before spawning the enemy.
 
 # Enemy Evolution
 Enemy difficulty evolves only after a boss is defeated. The first normal enemy waves use the base difficulty: slower bullets, longer shooting intervals, and ten possible spawn columns.
@@ -92,8 +82,6 @@ Screen labels are stored once and reused with `Output.printString` during render
 
 Player movement is intentionally quantized: each arrow-key movement changes x by 16 pixels horizontally or y by 8 pixels vertically. Together with `Sys.wait(10)`, this was the smoothest setting found through testing on my computer.
 
-The player, normal enemies, and bosses use direct screen memory drawing with `Memory.poke`. This is fast, but it means positions should stay screen-safe and mostly aligned to memory word boundaries. Bullets use `Screen.drawRectangle`, because their shape is simple and they can move with small vertical and horizontal changes.
-
 Enemy bullet speed uses integer movement plus bonus movement timing. This approximates percentage-based speed increases even though Jack does not support floating point numbers.
 
 Even-numbered waves use angled enemy bullet patterns. Every third counted wave, including boss waves, uses a wider left-and-right bullet angle. The angle is approximated by occasionally shifting bullets left or right while they move downward.
@@ -107,13 +95,11 @@ The boss bitmap is large and drawn with many `Memory.poke` calls, which makes it
 
 The player can move to the far right at `x = 496`, and `Player.draw()` writes one extra screen word with `memAddress + 225`. At the far right edge, that extra word can wrap into the next screen row. This is hard to notice during play; limiting movement to `x = 480` would avoid it, but would also stop the player from reaching the far right. A cleaner fix would be redrawing the player jet so its bitmap fits the screen word layout better.
 
-Full-screen redraw is reliable but may be slower than partial redraw.
-
 The game clears the whole canvas every timestep before redrawing everything. The advantage is that moving objects never leave old pixels behind, and there is no need to restore whatever was underneath a sprite. The disadvantage is that it does more drawing work every frame, which can lower FPS on slower computers.
 
 Keyboard input is polled once per frame, so extremely quick taps may still be missed.
 
-On some computers, holding an arrow key makes enemies and enemy bullets slow down or appear frozen, while the player jet keeps moving quickly. This does not happen on my computer, where the game feels smooth. Possible reasons include slower emulator keyboard handling, slower full-screen redraw, and an FPS by movement-step interaction: if the machine has high enough FPS, the 16-pixel horizontal and 8-pixel vertical steps feel smooth, but lower FPS makes the same movement steps look stuck or jumpy. This is not fixed yet.
+On some computers, holding an arrow key makes enemies and enemy bullets slow down or appear frozen, while the player jet keeps moving quickly. This does not happen on my computer, where the game feels smooth. Possible reasons include slower emulator keyboard handling, slower full-screen redraw, and an FPS by movement-step interaction: if the machine has high enough FPS, the 16-pixel horizontal and 8-pixel vertical steps feel smooth, but lower FPS makes the same movement steps look stuck or jumpy. 
 
 # Future Work
 Improve player drawing and movement further, possibly with a more detailed pixel-based sprite and a safer far-right boundary.
