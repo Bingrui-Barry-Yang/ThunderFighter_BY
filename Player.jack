@@ -26,8 +26,8 @@ class Player {
 
     method void moveUp() {
         // moves the player up in screen range
-        if (y > 4) {
-            let y = y - 4;
+        if (y > 8) {
+            let y = y - 8;
         }
         return;
     }
@@ -35,7 +35,7 @@ class Player {
     method void moveDown() {
         // moves the player down in screen range
         if ((y + height) < 251) {
-            let y = y + 4;
+            let y = y + 8;
         }
         return;
     }

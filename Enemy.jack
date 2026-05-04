@@ -10,6 +10,7 @@ class Enemy {
     field int moveDir; // move direction
     field int moveDelay; // boss speed
     field int moveSeed; // movement seed
+    field int moveToggle; // smooth toggle
     field int bossLevel; // boss number
     field boolean active; // alive flag
     field boolean boss; // boss flag
@@ -23,10 +24,11 @@ class Enemy {
         let targetY = 80; // the height that enemy stop moving downward
         let shootTimer = 0; // time until the next bullet
         let hp = 1;
-        let moveTimer = 0;
+        let moveTimer = 1;
         let moveDir = 0;
         let moveDelay = 0;
         let moveSeed = 7;
+        let moveToggle = 0;
         let bossLevel = 0;
         let active = false; // alive or dead
         let boss = false;
@@ -44,10 +46,11 @@ class Enemy {
         let targetY = 80;
         let shootTimer = 0;
         let hp = 1;
-        let moveTimer = 0;
+        let moveTimer = 1;
         let moveDir = 0;
         let moveDelay = 0;
         let moveSeed = startX + 7;
+        let moveToggle = 0;
         let bossLevel = 0;
         let active = true;
         let boss = false;
@@ -68,6 +71,7 @@ class Enemy {
         let moveDir = 0;
         let moveDelay = 0;
         let moveSeed = startX + Math.multiply(level + 1, 19);
+        let moveToggle = 0;
         let bossLevel = level;
         let active = true;
         let boss = true;
@@ -84,6 +88,13 @@ class Enemy {
         // let the enemy move down until it reaches the shooting height.
         if (y < targetY) {
             let y = y + 1;
+            let moveTimer = moveTimer - 1;
+            if (moveTimer = 0) {
+                if (y < targetY) {
+                    let y = y + 1;
+                }
+                let moveTimer = 2;
+            }
         }
 
         // counts down to the next shot after reaching the fixed height.
@@ -120,15 +131,20 @@ class Enemy {
                 }
                 if (moveDir = 2) {
                     if (x > 16) {
-                        let x = x - 8;
+                        let x = x - 4;
                     }
                 }
                 if (moveDir = 3) {
                     if (x < 408) {
-                        let x = x + 8;
+                        let x = x + 4;
                     }
                 }
-                let moveDelay = getBossMoveDelay();
+                if ((moveDir = 2) | (moveDir = 3)) {
+                    let moveDelay = getBossHorizontalDelay();
+                }
+                else {
+                    let moveDelay = getBossMoveDelay();
+                }
             }
 
             let moveTimer = moveTimer - 1;
@@ -170,6 +186,25 @@ class Enemy {
             return 1;
         }
         return delay;
+    }
+
+    method int getBossHorizontalDelay() {
+        // smooth x delay
+        var int delay;
+
+        let delay = getBossMoveDelay();
+        if (delay = 3) {
+            return 1;
+        }
+        if (delay = 2) {
+            if (moveToggle = 0) {
+                let moveToggle = 1;
+                return 1;
+            }
+            let moveToggle = 0;
+            return 0;
+        }
+        return 0;
     }
 
     method void deactivate() {

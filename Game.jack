@@ -33,7 +33,7 @@ class Game {
 
         // sets the fixed pool sizes for enemies and bullets (for now).
         let MAX_ENEMIES = 4;
-        let MAX_BULLETS = 20;
+        let MAX_BULLETS = 30;
 
         // creates the player and the two object pools.
         // The player starts on a 16-pixel boundary for bitmap drawing.
@@ -53,7 +53,7 @@ class Game {
         let gameOver = false;
         let paused = false;
         let randomSeed = 17;
-        let wavesUntilBoss = 3;
+        let wavesUntilBoss = 4;
         let waveNumber = 0;
         let bossesKilled = 0;
         let highScore = 0;
@@ -436,7 +436,7 @@ class Game {
             let enemy = enemies[i];
             if (~(enemy.isActive())) {
                 do enemy.resetBoss(208, 0, getNextBossHp(), bossesKilled);
-                let wavesUntilBoss = 3;
+                let wavesUntilBoss = 4;
                 let waveNumber = waveNumber + 1;
                 return;
             }
@@ -465,7 +465,19 @@ class Game {
 
     method void fireEnemyBullet(Enemy shooter) {
         // normal enemy fires
-        do fireEnemyBulletAt(shooter.getBulletX(), shooter.getBulletY(), 1, getEnemyBulletBonusGap());
+        if (isWideAngleWave()) {
+            do fireEnemyBulletAtWideAngle(shooter.getBulletX(), shooter.getBulletY(), 1, getEnemyBulletBonusGap(), -1);
+            do fireEnemyBulletAtWideAngle(shooter.getBulletX(), shooter.getBulletY(), 1, getEnemyBulletBonusGap(), 1);
+        }
+        else {
+        if (isEvenWave()) {
+            do fireEnemyBulletAtAngle(shooter.getBulletX(), shooter.getBulletY(), 1, getEnemyBulletBonusGap(), -1);
+            do fireEnemyBulletAtAngle(shooter.getBulletX(), shooter.getBulletY(), 1, getEnemyBulletBonusGap(), 1);
+        }
+        else {
+            do fireEnemyBulletAt(shooter.getBulletX(), shooter.getBulletY(), 1, getEnemyBulletBonusGap());
+        }
+        }
         return;
     }
 
@@ -474,9 +486,29 @@ class Game {
         var int startY;
 
         let startY = shooter.getBulletY();
-        do fireEnemyBulletAt(shooter.getX() + 8, startY, 1, getEnemyBulletBonusGap());
+        if (isWideAngleWave()) {
+            do fireEnemyBulletAtWideAngle(shooter.getX() + 8, startY, 1, getEnemyBulletBonusGap(), -1);
+        }
+        else {
+        if (isEvenWave()) {
+            do fireEnemyBulletAtAngle(shooter.getX() + 8, startY, 1, getEnemyBulletBonusGap(), -1);
+        }
+        else {
+            do fireEnemyBulletAt(shooter.getX() + 8, startY, 1, getEnemyBulletBonusGap());
+        }
+        }
         do fireEnemyBulletAt(shooter.getX() + 47, startY, 1, getEnemyBulletBonusGap());
-        do fireEnemyBulletAt(shooter.getX() + 86, startY, 1, getEnemyBulletBonusGap());
+        if (isWideAngleWave()) {
+            do fireEnemyBulletAtWideAngle(shooter.getX() + 86, startY, 1, getEnemyBulletBonusGap(), 1);
+        }
+        else {
+        if (isEvenWave()) {
+            do fireEnemyBulletAtAngle(shooter.getX() + 86, startY, 1, getEnemyBulletBonusGap(), 1);
+        }
+        else {
+            do fireEnemyBulletAt(shooter.getX() + 86, startY, 1, getEnemyBulletBonusGap());
+        }
+        }
         return;
     }
 
@@ -496,6 +528,40 @@ class Game {
                 else {
                     do bullet.reset(startX, startY, speedY, 1);
                 }
+                return;
+            }
+            let i = i + 1;
+        }
+        return;
+    }
+
+    method void fireEnemyBulletAtAngle(int startX, int startY, int speedY, int bonusGap, int moveX) {
+        // angled enemy bullet
+        var int i;
+        var Bullet bullet;
+
+        let i = 0;
+        while (i < MAX_BULLETS) {
+            let bullet = bullets[i];
+            if (~(bullet.isActive())) {
+                do bullet.resetAngled(startX, startY, speedY, 1, bonusGap, moveX);
+                return;
+            }
+            let i = i + 1;
+        }
+        return;
+    }
+
+    method void fireEnemyBulletAtWideAngle(int startX, int startY, int speedY, int bonusGap, int moveX) {
+        // steeper enemy bullet
+        var int i;
+        var Bullet bullet;
+
+        let i = 0;
+        while (i < MAX_BULLETS) {
+            let bullet = bullets[i];
+            if (~(bullet.isActive())) {
+                do bullet.resetAngledWithGap(startX, startY, speedY, 1, bonusGap, moveX, 2);
                 return;
             }
             let i = i + 1;
@@ -587,7 +653,7 @@ class Game {
         let gameOver = false;
         let paused = false;
         let randomSeed = 17;
-        let wavesUntilBoss = 3;
+        let wavesUntilBoss = 4;
         let waveNumber = 0;
         let bossesKilled = 0;
         let newRecord = false;
@@ -731,7 +797,7 @@ class Game {
     method void countEnemyKill(Enemy enemy) {
         // add rewards
         if (enemy.isBoss()) {
-            let score = score + 100;
+            let score = score + getNextBossHp();
             let bossesKilled = bossesKilled + 1;
             do player.heal();
         }
@@ -804,14 +870,14 @@ class Game {
 
     method int getNextBossHp() {
         // boss hp scaling
-        return 20 + Math.multiply(bossesKilled, 5);
+        return 50 + Math.multiply(bossesKilled, 20);
     }
 
     method int getEnemyShootInterval() {
         // shot interval scaling
         var int interval;
 
-        let interval = 60 - Math.divide(Math.multiply(60, Math.multiply(bossesKilled, 5)), 100);
+        let interval = 60 - Math.divide(Math.multiply(60, Math.multiply(bossesKilled, 8)), 100);
         if (interval < 15) {
             return 15;
         }
@@ -822,7 +888,7 @@ class Game {
         // bullet speed scaling
         var int bonus;
 
-        let bonus = 20 + Math.multiply(bossesKilled, 5);
+        let bonus = 20 + Math.multiply(bossesKilled, 8);
         if (bonus < 1) {
             return 0;
         }
@@ -833,9 +899,9 @@ class Game {
         // spawn column count
         var int count;
 
-        let count = 6 + Math.divide(bossesKilled, 2);
-        if (count > 16) {
-            return 16;
+        let count = 10 + Math.multiply(bossesKilled, 2);
+        if (count > 20) {
+            return 20;
         }
         return count;
     }
@@ -861,6 +927,16 @@ class Game {
         }
         let wordColumn = Math.divide(Math.multiply(lane, 29), laneCount - 1);
         return 16 + Math.multiply(wordColumn, 16);
+    }
+
+    method boolean isEvenWave() {
+        // even wave check
+        return (Math.multiply(Math.divide(waveNumber, 2), 2) = waveNumber);
+    }
+
+    method boolean isWideAngleWave() {
+        // third wave check
+        return (Math.multiply(Math.divide(waveNumber, 3), 3) = waveNumber);
     }
 
     method boolean isGameOver() {

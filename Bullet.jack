@@ -7,6 +7,9 @@ class Bullet {
     field int owner; // bullet owner
     field int bonusGap; // speed bonus gap
     field int bonusTimer; // bonus timer
+    field int dx; // horizontal drift
+    field int driftTimer; // drift timer
+    field int driftGap; // drift gap
     field boolean active; // active flag
 
     constructor Bullet new(int startX, int startY) {
@@ -19,6 +22,9 @@ class Bullet {
         let owner = 0;
         let bonusGap = 0;
         let bonusTimer = 0;
+        let dx = 0;
+        let driftTimer = 4;
+        let driftGap = 4;
         let active = false;
 
         return this;
@@ -32,6 +38,9 @@ class Bullet {
         let owner = bulletOwner;
         let bonusGap = 0;
         let bonusTimer = 0;
+        let dx = 0;
+        let driftTimer = 4;
+        let driftGap = 4;
         let active = true;
         return;
     }
@@ -44,6 +53,39 @@ class Bullet {
         let owner = bulletOwner;
         let bonusGap = gap;
         let bonusTimer = gap;
+        let dx = 0;
+        let driftTimer = 4;
+        let driftGap = 4;
+        let active = true;
+        return;
+    }
+
+    method void resetAngled(int startX, int startY, int speedY, int bulletOwner, int gap, int moveX) {
+        // reset angled bullet
+        let x = startX;
+        let y = startY;
+        let dy = speedY;
+        let owner = bulletOwner;
+        let bonusGap = gap;
+        let bonusTimer = gap;
+        let dx = moveX;
+        let driftTimer = 4;
+        let driftGap = 4;
+        let active = true;
+        return;
+    }
+
+    method void resetAngledWithGap(int startX, int startY, int speedY, int bulletOwner, int gap, int moveX, int angleGap) {
+        // reset steeper angled bullet
+        let x = startX;
+        let y = startY;
+        let dy = speedY;
+        let owner = bulletOwner;
+        let bonusGap = gap;
+        let bonusTimer = gap;
+        let dx = moveX;
+        let driftTimer = angleGap;
+        let driftGap = angleGap;
         let active = true;
         return;
     }
@@ -58,8 +100,21 @@ class Bullet {
                 let bonusTimer = bonusGap;
             }
         }
+        if (~(dx = 0)) {
+            let driftTimer = driftTimer - 1;
+            if (driftTimer < 1) {
+                let x = x + dx;
+                let driftTimer = driftGap;
+            }
+        }
 
         // turns the bullet off before drawing would go outside the screen.
+        if (x < 0) {
+            let active = false;
+        }
+        if ((x + width) > 511) {
+            let active = false;
+        }
         if (y < 0) {
             let active = false;
         }
