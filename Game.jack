@@ -13,6 +13,8 @@ class Game {
     field int enemyMoveTimer; // enemy move timer
     field int playerDx; // horizontal input
     field int playerDy; // vertical input
+    field int currentKey; // current key
+    field boolean controlKeyDown; // control key held
     field boolean gameOver; // game over flag
     field boolean paused; // pause flag
     field int randomSeed; // used to choose a random enemy lane
@@ -50,6 +52,8 @@ class Game {
         let enemyMoveTimer = 0;
         let playerDx = 0;
         let playerDy = 0;
+        let currentKey = 0;
+        let controlKeyDown = false;
         let gameOver = false;
         let paused = false;
         let randomSeed = 17;
@@ -105,6 +109,8 @@ class Game {
 
     method void update() {
         // update one frame
+        let currentKey = Keyboard.keyPressed();
+
         if (handleControlKeys()) {
             return;
         }
@@ -250,23 +256,19 @@ class Game {
 
     method void readPlayerInput() {
         // read move intent
-        var int key;
-
-        // reads keyboard value
-        let key = Keyboard.keyPressed();
         let playerDx = 0;
         let playerDy = 0;
 
-        if (key = 131) {
+        if (currentKey = 131) {
             let playerDy = -1;
         }
-        if (key = 133) {
+        if (currentKey = 133) {
             let playerDy = 1;
         }
-        if (key = 130) {
+        if (currentKey = 130) {
             let playerDx = -1;
         }
-        if (key = 132) {
+        if (currentKey = 132) {
             let playerDx = 1;
         }
         return;
@@ -650,6 +652,8 @@ class Game {
         let enemyMoveTimer = 0;
         let playerDx = 0;
         let playerDy = 0;
+        let currentKey = 0;
+        let controlKeyDown = false;
         let gameOver = false;
         let paused = false;
         let randomSeed = 17;
@@ -739,26 +743,39 @@ class Game {
 
     method boolean handleControlKeys() {
         // pause or restart
-        var int key;
+        var boolean controlPressed;
 
-        let key = Keyboard.keyPressed();
+        let controlPressed = false;
 
-        if ((key = 82) | (key = 114)) {
-            do updateHighScore();
-            do resetGameState();
-            do waitForKeyRelease();
-            return true;
+        if ((currentKey = 82) | (currentKey = 114)) {
+            let controlPressed = true;
+        }
+        if (currentKey = 32) {
+            let controlPressed = true;
         }
 
-        if (key = 32) {
-            if (paused) {
-                let paused = false;
+        if (controlPressed) {
+            if (~controlKeyDown) {
+                let controlKeyDown = true;
+                if ((currentKey = 82) | (currentKey = 114)) {
+                    do updateHighScore();
+                    do resetGameState();
+                    let controlKeyDown = true;
+                    return true;
+                }
+                if (currentKey = 32) {
+                    if (paused) {
+                        let paused = false;
+                    }
+                    else {
+                        let paused = true;
+                    }
+                    return true;
+                }
             }
-            else {
-                let paused = true;
-            }
-            do waitForKeyRelease();
-            return true;
+        }
+        else {
+            let controlKeyDown = false;
         }
 
         if (paused) {
