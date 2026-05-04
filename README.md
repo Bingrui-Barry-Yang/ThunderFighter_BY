@@ -55,6 +55,8 @@ To avoid memory problems, the game reuses enemy and bullet objects instead of cr
 
 The game starts on a title screen and waits for the player to press `S`. After that, the main loop repeatedly reads keyboard input, handles pause/restart, updates the player, spawns waves when the screen is clear, updates bullets and enemies, checks collisions, redraws the screen, and waits briefly with `Sys.wait`.
 
+The game uses small timers for player movement, bullet movement, enemy movement, player shooting, and enemy spawning, so each system can update at its own rate inside the same loop. Rendering clears the whole screen every frame, then redraws the player, active bullets, active enemies, and HUD text in that order.
+
 During play, pressing `Space` pauses the update logic until `Space` is pressed again. Pressing `R` resets the current run while keeping the highest score.
 
 When the player's HP reaches 0, the game shows the game-over screen with the score and highest score. Pressing `R` starts a new run.
@@ -66,12 +68,15 @@ The wave counter increases for both normal waves and boss waves. After every fou
 
 Bosses are larger enemies with their own bitmap design, HP, random movement, and three-shot bullet firing from left, center, and right. The first boss has 50 HP, and each later boss has 20 more HP than the previous boss. Boss movement also changes by boss number so later boss paths are not identical.
 
+# Pseudo-Random Spawning
+Enemy lanes use a simple pseudo-random seed, not true randomness. The seed starts at 17, mixes in the player's current x/y position plus a small constant, wraps back under 160, then maps that value into the current number of safe spawn columns. If a chosen lane is already occupied, the game tries another lane before spawning the enemy.
+
 # Enemy Evolution
 Enemy difficulty evolves only after a boss is defeated. The first normal enemy waves use the base difficulty: slower bullets, longer shooting intervals, and ten possible spawn columns.
 
 Each defeated boss increases enemy bullet speed by 8% and decreases enemy shooting interval by 8%. Boss bullets use the same speed and interval evolution as normal enemy bullets.
 
-Each defeated boss unlocks two more possible spawn columns for normal enemy waves, up to a maximum of 20. This makes later waves less predictable while still keeping every enemy fully visible.
+Each defeated boss unlocks two more possible spawn columns for normal enemy waves, up to a maximum of 16. This makes later waves less predictable while still keeping every enemy fully visible.
 
 # HP, Score, and Records
 The player starts with 3 HP. Defeating a boss gives the player `HP++`, increasing player HP by 1.
@@ -83,7 +88,11 @@ The game uses fixed object pools for bullets and enemies. This avoids creating n
 
 Rendering mostly uses full-screen redraw. Each frame clears the screen and redraws active objects and HUD text. This is simpler than erasing individual sprites, because the game does not need to remember what was underneath a moving object.
 
-Some sprites use direct screen memory drawing, especially enemies and bosses. This is fast, but it means positions should stay screen-safe and mostly aligned to memory word boundaries. The player was changed to pixel-based `Screen` drawing so its movement can be smoother.
+Screen labels are stored once and reused with `Output.printString` during rendering. This keeps the code easier to read while avoiding repeated string allocation.
+
+Player movement is intentionally quantized: each arrow-key movement changes x by 16 pixels horizontally or y by 8 pixels vertically. Together with `Sys.wait(10)`, this was the smoothest setting found through testing on my computer.
+
+The player, normal enemies, and bosses use direct screen memory drawing with `Memory.poke`. This is fast, but it means positions should stay screen-safe and mostly aligned to memory word boundaries. Bullets use `Screen.drawRectangle`, because their shape is simple and they can move with small vertical and horizontal changes.
 
 Enemy bullet speed uses integer movement plus bonus movement timing. This approximates percentage-based speed increases even though Jack does not support floating point numbers.
 
@@ -96,17 +105,29 @@ The random behavior is pseudo-random and based on simple integer seed updates, n
 
 The boss bitmap is large and drawn with many `Memory.poke` calls, which makes it harder to edit than the player drawing.
 
+The player can move to the far right at `x = 496`, and `Player.draw()` writes one extra screen word with `memAddress + 225`. At the far right edge, that extra word can wrap into the next screen row. This is hard to notice during play; limiting movement to `x = 480` would avoid it, but would also stop the player from reaching the far right. A cleaner fix would be redrawing the player jet so its bitmap fits the screen word layout better.
+
 Full-screen redraw is reliable but may be slower than partial redraw.
+
+The game clears the whole canvas every timestep before redrawing everything. The advantage is that moving objects never leave old pixels behind, and there is no need to restore whatever was underneath a sprite. The disadvantage is that it does more drawing work every frame, which can lower FPS on slower computers.
 
 Keyboard input is polled once per frame, so extremely quick taps may still be missed.
 
+On some computers, holding an arrow key makes enemies and enemy bullets slow down or appear frozen, while the player jet keeps moving quickly. This does not happen on my computer, where the game feels smooth. Possible reasons include slower emulator keyboard handling, slower full-screen redraw, and an FPS by movement-step interaction: if the machine has high enough FPS, the 16-pixel horizontal and 8-pixel vertical steps feel smooth, but lower FPS makes the same movement steps look stuck or jumpy. This is not fixed yet.
+
 # Future Work
-Improve player drawing and movement further, possibly with a more detailed pixel-based sprite.
+Improve player drawing and movement further, possibly with a more detailed pixel-based sprite and a safer far-right boundary.
+
+Investigate the arrow-key slowdown on slower computers, possibly by reducing redraw cost, changing movement step size, or separating input responsiveness from animation speed more cleanly.
 
 Add different enemy types with different movement patterns.
 
-Add power-ups besides boss `HP++`, such as shields or stronger player bullets.
+Expand the weapon upgrade system, such as stronger bullets, spread shots, shields, or temporary power-ups.
+
+Let the player choose difficulty levels that change enemy speed, bullet speed, boss HP, or wave behavior.
 
 Add saved high score support if persistent storage is allowed.
 
 Add more boss attack patterns and clearer visual feedback when the boss is hit.
+
+I hope to keep updating and improving this game in the future.

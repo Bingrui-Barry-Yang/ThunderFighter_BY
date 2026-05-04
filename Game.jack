@@ -23,6 +23,20 @@ class Game {
     field int bossesKilled; // boss kills
     field int highScore; // best score
     field boolean newRecord; // record flag
+    field String scoreText; // hud text
+    field String hpText; // hud text
+    field String bossHpText; // hud text
+    field String pausedText; // hud text
+    field String waveText; // hud text
+    field String highText; // hud text
+    field String newRecordText; // hud text
+    field String gameOverText; // screen text
+    field String highestScoreText; // screen text
+    field String restartText; // screen text
+    field String titleText; // screen text
+    field String rulesText; // screen text
+    field String startText; // screen text
+    field String pauseHelpText; // screen text
 
     constructor Game new() {
         return this;
@@ -62,6 +76,20 @@ class Game {
         let bossesKilled = 0;
         let highScore = 0;
         let newRecord = false;
+        let scoreText = "Score: ";
+        let hpText = "HP: ";
+        let bossHpText = "Boss HP: ";
+        let pausedText = "Paused";
+        let waveText = "Wave: ";
+        let highText = "High: ";
+        let newRecordText = "New Record";
+        let gameOverText = "Game Over";
+        let highestScoreText = "Highest Score: ";
+        let restartText = "Press [R] to restart";
+        let titleText = "Thunder Fighter";
+        let rulesText = "Shoot automatically, use Arrows to dodge";
+        let startText = "Press [S] to start";
+        let pauseHelpText = "Press [Space] to pause";
 
         // makes the fixed enemy pool, enemy inside can be reused, not activated yet
         let i = 0;
@@ -183,73 +211,31 @@ class Game {
             let i = i + 1;
         }
 
-        // prints the score and HP at the top.
-        // Using printChar here helps avoid ERR6, because repeated printString in the loop can keep making new string objects.
+        // prints reused HUD strings at the top.
         do Output.moveCursor(0, 0);
-        do Output.printChar(83);
-        do Output.printChar(99);
-        do Output.printChar(111);
-        do Output.printChar(114);
-        do Output.printChar(101);
-        do Output.printChar(58);
-        do Output.printChar(32);
+        do Output.printString(scoreText);
         do Output.printInt(score);
         do Output.moveCursor(1, 0);
-        do Output.printChar(72);
-        do Output.printChar(80);
-        do Output.printChar(58);
-        do Output.printChar(32);
+        do Output.printString(hpText);
         do Output.printInt(player.getHp());
         if (bossActive()) {
             do Output.moveCursor(2, 0);
-            do Output.printChar(66);
-            do Output.printChar(111);
-            do Output.printChar(115);
-            do Output.printChar(115);
-            do Output.printChar(32);
-            do Output.printChar(72);
-            do Output.printChar(80);
-            do Output.printChar(58);
-            do Output.printChar(32);
+            do Output.printString(bossHpText);
             do Output.printInt(getBossHp());
         }
         if (paused) {
             do Output.moveCursor(6, 0);
-            do Output.printChar(80);
-            do Output.printChar(97);
-            do Output.printChar(117);
-            do Output.printChar(115);
-            do Output.printChar(101);
-            do Output.printChar(100);
+            do Output.printString(pausedText);
         }
         do Output.moveCursor(3, 0);
-        do Output.printChar(87);
-        do Output.printChar(97);
-        do Output.printChar(118);
-        do Output.printChar(101);
-        do Output.printChar(58);
-        do Output.printChar(32);
+        do Output.printString(waveText);
         do Output.printInt(waveNumber);
         do Output.moveCursor(4, 0);
-        do Output.printChar(72);
-        do Output.printChar(105);
-        do Output.printChar(103);
-        do Output.printChar(104);
-        do Output.printChar(58);
-        do Output.printChar(32);
+        do Output.printString(highText);
         do Output.printInt(highScore);
         if ((newRecord) | (score > highScore)) {
             do Output.moveCursor(5, 0);
-            do Output.printChar(78);
-            do Output.printChar(101);
-            do Output.printChar(119);
-            do Output.printChar(32);
-            do Output.printChar(82);
-            do Output.printChar(101);
-            do Output.printChar(99);
-            do Output.printChar(111);
-            do Output.printChar(114);
-            do Output.printChar(100);
+            do Output.printString(newRecordText);
         }
         return;
     }
@@ -685,19 +671,19 @@ class Game {
         //  draws the game-over text, score, and restart button once.
         do Screen.clearScreen();
         do Output.moveCursor(7, 27);
-        do Output.printString("Game Over");
+        do Output.printString(gameOverText);
         do Output.moveCursor(9, 27);
-        do Output.printString("Score: ");
+        do Output.printString(scoreText);
         do Output.printInt(score);
         do Output.moveCursor(11, 24);
-        do Output.printString("Highest Score: ");
+        do Output.printString(highestScoreText);
         do Output.printInt(highScore);
         if (newRecord) {
             do Output.moveCursor(13, 27);
-            do Output.printString("New Record");
+            do Output.printString(newRecordText);
         }
         do Output.moveCursor(15, 22);
-        do Output.printString("Press [R] to restart");
+        do Output.printString(restartText);
         return;
     }
 
@@ -718,13 +704,13 @@ class Game {
         // start screen
         do Screen.clearScreen();
         do Output.moveCursor(8, 24);
-        do Output.printString("Thunder Fighter");
+        do Output.printString(titleText);
         do Output.moveCursor(10, 11);
-        do Output.printString("Shoot automatically, use Arrows to dodge");
+        do Output.printString(rulesText);
         do Output.moveCursor(12, 24);
-        do Output.printString("Press [S] to start");
+        do Output.printString(startText);
         do Output.moveCursor(14, 21);
-        do Output.printString("Press [Space] to pause");
+        do Output.printString(pauseHelpText);
         return;
     }
 
@@ -917,8 +903,8 @@ class Game {
         var int count;
 
         let count = 10 + Math.multiply(bossesKilled, 2);
-        if (count > 20) {
-            return 20;
+        if (count > 16) {
+            return 16;
         }
         return count;
     }
